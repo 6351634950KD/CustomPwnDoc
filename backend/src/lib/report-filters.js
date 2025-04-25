@@ -54,6 +54,21 @@ defaultFilters.bookmarkRef = function(input) {
         + input + '</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>';
 }
 
+// Create external hyperlink
+defaultFilters.externalLink=function(displayText, url) {
+    return `
+<w:r><w:fldChar w:fldCharType="begin"/></w:r>
+<w:r><w:instrText xml:space="preserve"> HYPERLINK "${url}" </w:instrText></w:r>
+<w:r><w:fldChar w:fldCharType="separate"/></w:r>
+<w:r>
+  <w:rPr><w:rStyle w:val="Hyperlink"/></w:rPr>
+  <w:t>${displayText}</w:t>
+</w:r>
+<w:r><w:fldChar w:fldCharType="end"/></w:r>
+    `.trim();
+}
+
+
 // Capitalizes input first letter: {input | capfirst}
 subTemplatingFilters.capfirst = function(input) {
     if (!input || input == "undefined") return input;
@@ -71,13 +86,109 @@ defaultFilters.convertDate = function(input, s) {
         var month = date.getUTCMonth();
         var year = date.getUTCFullYear();
         if (s === "full") {
-            return days[date.getUTCDay()] + ", " + monthsFull[month] + " " + (day<10 ? '0'+day: day) + ", " + year;
+            return (day<10 ? '0'+day: day) + "-" + monthsFull[month] + "-" + year;
         }
         if (s === "short") {
             return monthsShort[month] + "/" + (day<10 ? '0'+day: day) + "/" + year;
         }
     }
 }
+
+defaultFilters.formatDate = function(input, format) {
+    var date = new Date(input);
+    if (date != "Invalid Date") {
+        var day = date.getUTCDate();
+        var month = date.getUTCMonth() + 1; // Months are zero-indexed
+        var year = date.getUTCFullYear();
+
+        // Add leading zeros if needed
+        var dayStr = day < 10 ? '0' + day : day;
+        var monthStr = month < 10 ? '0' + month : month;
+
+        if (format === "dot") {
+            return `${dayStr}.${monthStr}.${year}`;
+        }
+        if (format === "dash") {
+            return `${dayStr}-${monthStr}-${year}`;
+        }
+    }
+}
+
+
+defaultFilters.currentDate = function() {
+    var date = new Date();
+    var monthsFull = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    var day = date.getUTCDate();
+    var month = date.getUTCMonth();
+    var year = date.getUTCFullYear();
+    return (day < 10 ? '0' + day : day) + "-" + monthsFull[month] + "-" + year;
+}
+
+defaultFilters.customConvertDate = function(input, s) {
+    var date = new Date(input);
+    if (date != "Invalid Date") {
+        var monthsFull = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        var monthsShort = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+        var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        var day = date.getUTCDate();
+        var month = date.getUTCMonth();
+        var year = date.getUTCFullYear();
+        if (s === "full") {
+            return (day<10 ? '0'+day: day) + "-" + monthsFull[month] + "-" + year;
+        }
+        if (s === "short") {
+            return monthsShort[month] + "/" + (day<10 ? '0'+day: day) + "/" + year;
+        }
+    }
+}
+
+defaultFilters.customDatePart = function(input, s) {
+    var date = new Date(input);
+    if (date != "Invalid Date") {
+        var monthsFull = ["January", "February", "March", "April", "May", "June",
+                          "July", "August", "September", "October", "November", "December"];
+
+        var day = date.getUTCDate();
+        var month = date.getUTCMonth();
+        var year = date.getUTCFullYear();
+
+        function getOrdinal(n) {
+            var suffix = ["th", "st", "nd", "rd"],
+                v = n % 100;
+            return n + (suffix[(v - 20) % 10] || suffix[v] || suffix[0]);
+        }
+
+        if (s === "week") {
+            var startOfMonth = new Date(Date.UTC(year, month, 1));
+            var startWeekday = startOfMonth.getUTCDay(); // Sunday = 0
+            var adjustedDay = day + startWeekday;
+            var weekNumber = Math.ceil(adjustedDay / 7);
+            return getOrdinal(weekNumber);
+        }
+
+        if (s === "month") {
+            return monthsFull[month];
+        }
+
+        if (s === "year") {
+            return year;
+        }
+    }
+}
+
+defaultFilters.calculateTotalDays = function(start_date, end_date) {
+    var start = new Date(start_date);
+    var end = new Date(end_date);
+    if (start != "Invalid Date" && end != "Invalid Date") {
+        // Calculate difference in milliseconds
+        var diffTime = end.getTime() - start.getTime();
+        // Convert to days and add 1 to include both start and end dates
+        var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        return diffDays;
+    }
+}
+
+
 
 // Convert input date with parameter s (full,short): {input | convertDateLocale: 'locale':'style'}
 defaultFilters.convertDateLocale = function(input, locale, style) {
@@ -282,16 +393,33 @@ defaultFilters.sort = function(input, key = null) {
     }
 }
 
+defaultFilters.sortFindings = function(input, key = null) {
+    if (key === null) {
+        return input.sort();
+    }
+    else {
+        return input.sort(function(a, b) {
+            return _.get(a, key) < _.get(b, key);
+        });
+    }
+}
+
 // Sort array by supplied field: {#findings | sortArrayByField: 'identifier':1}{/}
 // order: 1 = ascending, -1 = descending
 defaultFilters.sortArrayByField = function (input, field, order) {
     //invalid order sort ascending
-    if(order != 1 && order != -1) order = 1;
+    if(order != 1 && order != -1) order = -1;
 
     const sorted = input.sort((a,b) => {
         //multiply by order so that if is descending (-1) will reverse the values
         return _.get(a, field).localeCompare(_.get(b, field), undefined, {numeric: true}) * order
     })
+
+    // Reassign identifiers in order
+    sorted.forEach((item, index) => {
+        item.identifier = index + 1;
+    });
+
     return sorted;
 }
 
@@ -358,6 +486,39 @@ defaultFilters.count = function(input, severity, scoreType) {
 
     return count;
 }
+
+defaultFilters.customCount = function(input, severity, scoreType) {
+    if(!input) return input;
+    var count = 0;
+
+    for(var i = 0; i < input.length; i++){
+
+        if(input[i].severity === severity){
+            count += 1;
+        }
+    }
+
+    return count;
+}
+
+defaultFilters.customStatusCount = function(input, status, assets) {
+    if(!input) return input;
+    var count = 0;
+
+    for(var i = 0; i < input.length; i++){
+
+        if(input[i].status === status && input[i].assets === assets){
+            count += 1;
+        }
+    }
+
+    return count;
+}
+
+defaultFilters.collaboratorsCount = function(input) {
+    return input.length + 1
+}
+
 
 // Translate using locale from 'translate' folder
 // Example: {input | translate: 'fr'}

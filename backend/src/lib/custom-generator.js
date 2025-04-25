@@ -50,5 +50,23 @@ expressions.filters.convertDateFR = function(input, s) {
     }
 }
 
+expressions.filters.convertDateGU = function(input, s) {
+    var date = new Date(input);
+    if (date !== "Invalid Date") {
+        var monthsFull = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+        var monthsShort = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+        var days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+        var day = date.getUTCDate();
+        var month = date.getUTCMonth();
+        var year = date.getUTCFullYear();
+        if (s === "full") {
+            return days[date.getUTCDay()] + " " + (day<10 ? '0'+day: day) + " " + monthsFull[month] + " " + year;
+        }
+        if (s === "short") {
+            return (day<10 ? '0'+day: day) + "/" + monthsShort[month] + "/" + year;
+        }
+    }
+}
+
 exports.expressions = expressions
 

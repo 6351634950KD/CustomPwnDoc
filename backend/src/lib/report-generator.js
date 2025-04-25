@@ -301,7 +301,8 @@ async function prepAuditData(data, settings) {
     var lowColor = settings.report.public.cvssColors.lowColor.replace('#', ''); //default of green ("#008000")
     var mediumColor = settings.report.public.cvssColors.mediumColor.replace('#', ''); //default of yellow ("#f9a009")
     var highColor = settings.report.public.cvssColors.highColor.replace('#', ''); //default of red ("#fe0000")
-    var criticalColor = settings.report.public.cvssColors.criticalColor.replace('#', ''); //default of black ("#212121")
+    // var criticalColor = settings.report.public.cvssColors.criticalColor.replace('#', ''); //default of black ("#212121")
+    var criticalColor = 'C00000'
 
     var cellNoneColor = '<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="' + noneColor + '"/></w:tcPr>';
     var cellLowColor = '<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="'+lowColor+'"/></w:tcPr>';
@@ -376,8 +377,10 @@ async function prepAuditData(data, settings) {
             status: finding.status || "",
             category: $t(finding.category) || $t("No Category"),
             identifier: "IDX-" + utils.lPad(finding.identifier),
+            identifiers: utils.lPad(finding.identifier),
             retestStatus: finding.retestStatus || "",
-            retestDescription: await splitHTMLParagraphs(finding.retestDescription)
+            retestDescription: await splitHTMLParagraphs(finding.retestDescription),
+            severity: (finding.customFields.find(f => (_.deburr((f.customField?.label || f.label).toLowerCase()).replace(/\s/g, '').replace(/[^\w]/g, '_')) === 'severity') || {}).text
         }
         // Handle CVSS
         tmpFinding.cvss = {
@@ -407,11 +410,11 @@ async function prepAuditData(data, settings) {
         else
             tmpFinding.cvss.environmentalModifiedExploitability = ""
 
-        if (tmpCVSS.baseSeverity === "Low") tmpFinding.cvss.cellColor = cellLowColor
-        else if (tmpCVSS.baseSeverity === "Medium") tmpFinding.cvss.cellColor = cellMediumColor
-        else if (tmpCVSS.baseSeverity === "High") tmpFinding.cvss.cellColor = cellHighColor
-        else if (tmpCVSS.baseSeverity === "Critical") tmpFinding.cvss.cellColor = cellCriticalColor
-        else tmpFinding.cvss.cellColor = cellNoneColor
+        // if (tmpCVSS.baseSeverity === "Low") tmpFinding.cvss.cellColor = cellLowColor
+        // else if (tmpCVSS.baseSeverity === "Medium") tmpFinding.cvss.cellColor = cellMediumColor
+        // else if (tmpCVSS.baseSeverity === "High") tmpFinding.cvss.cellColor = cellHighColor
+        // else if (tmpCVSS.baseSeverity === "Critical") tmpFinding.cvss.cellColor = cellCriticalColor
+        // else tmpFinding.cvss.cellColor = cellNoneColor
 
         if (tmpCVSS.temporalSeverity === "Low") tmpFinding.cvss.temporalCellColor = cellLowColor
         else if (tmpCVSS.temporalSeverity === "Medium") tmpFinding.cvss.temporalCellColor = cellMediumColor
@@ -424,6 +427,13 @@ async function prepAuditData(data, settings) {
         else if (tmpCVSS.environmentalSeverity === "High") tmpFinding.cvss.environmentalCellColor = cellHighColor
         else if (tmpCVSS.environmentalSeverity === "Critical") tmpFinding.cvss.environmentalCellColor = cellCriticalColor
         else tmpFinding.cvss.environmentalCellColor = cellNoneColor
+
+        if (tmpFinding.severity === "Low") tmpFinding.cvss.cellColors = cellLowColor
+        else if (tmpFinding.severity === "Medium") tmpFinding.cvss.cellColors = cellMediumColor
+        else if (tmpFinding.severity === "High") tmpFinding.cvss.cellColors = cellHighColor
+        else if (tmpFinding.severity === "Critical") tmpFinding.cvss.cellColors = cellCriticalColor
+        else tmpFinding.cvss.cellColors = cellNoneColor
+        console.log(tmpFinding.severity)
 
         tmpFinding.cvssObj = cvssStrToObject(tmpCVSS.vectorString)
 
